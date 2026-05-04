@@ -62,7 +62,7 @@ The system is designed with clear separation of concerns:
 ---
 
 flowchart TD
-
+```
 %% User Layer
 U[Users<br/>Web / Telegram / LINE]
 
@@ -102,7 +102,7 @@ INGEST --> VDB
 %% Styling
 classDef layer fill:#0f172a,color:#fff,stroke:#38bdf8;
 class API,ORCH,ORDER,ROUTER,RAG,LLM,WS layer;
-
+```
 ---
 
 ## ⚙️ Key Features | 核心功能
