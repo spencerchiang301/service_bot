@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>客服後台</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f8fafc;display:flex;height:100vh;overflow:hidden;color:#1e293b;}
+
+    /* ── Sidebar ── */
+    .sidebar{width:320px;min-width:320px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;height:100vh;}
+    .sidebar-header{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;}
+    .sidebar-header h1{font-size:17px;font-weight:700;color:#1e293b;}
+    .sidebar-header .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px;}
+    .filter-tabs{display:flex;padding:10px 16px;gap:6px;border-bottom:1px solid #e2e8f0;}
+    .tab{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #e2e8f0;color:#64748b;background:#fff;transition:all .15s;}
+    .tab.active{background:#6366f1;color:#fff;border-color:#6366f1;}
+    .conv-list{flex:1;overflow-y:auto;}
+    .conv-list::-webkit-scrollbar{width:4px;}.conv-list::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px;}
+    .conv-item{padding:14px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .1s;display:flex;align-items:flex-start;gap:10px;}
+    .conv-item:hover{background:#f8fafc;}.conv-item.active{background:#eef2ff;}
+    .conv-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:#f1f5f9;}
+    .conv-body{flex:1;min-width:0;}
+    .conv-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+    .conv-name{font-size:13px;font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .conv-time{font-size:11px;color:#94a3b8;flex-shrink:0;margin-left:6px;}
+    .conv-preview{font-size:12px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .conv-meta{display:flex;gap:5px;margin-top:4px;align-items:center;}
+    .badge-channel{font-size:10px;padding:2px 6px;border-radius:999px;font-weight:500;}
+    .badge-channel.telegram{background:#e0f2fe;color:#0369a1;}
+    .badge-channel.line{background:#dcfce7;color:#166534;}
+    .badge-channel.web{background:#f3e8ff;color:#7c3aed;}
+    .badge-mode{font-size:10px;padding:2px 6px;border-radius:999px;font-weight:500;}
+    .badge-mode.bot{background:#fff7ed;color:#ea580c;}
+    .badge-mode.agent{background:#ede9fe;color:#7c3aed;}
+    .unread{background:#6366f1;color:#fff;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:auto;}
+    .empty-conv{padding:40px 20px;text-align:center;color:#94a3b8;font-size:13px;}
+    .search-bar{padding:8px 12px;border-bottom:1px solid #f1f5f9;}
+    .search-bar input{width:100%;padding:6px 10px 6px 28px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;transition:border-color .2s;}
+    .search-bar input:focus{border-color:#6366f1;background-color:#fff;}
+    .tag-filter-row{display:flex;gap:4px;flex-wrap:wrap;padding:0 12px 8px;border-bottom:1px solid #f1f5f9;}
+    .tag-filter-chip{font-size:10px;padding:2px 8px;border-radius:999px;cursor:pointer;border:1px solid #e2e8f0;background:#fff;color:#64748b;transition:all .15s;}
+    .tag-filter-chip.active{background:#eff6ff;color:#2563eb;border-color:#bfdbfe;}
+    .sidebar-footer{padding:12px 16px;border-top:1px solid #f1f5f9;}
+    .admin-link{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;color:#64748b;font-size:12px;text-decoration:none;transition:background .15s;}
+    .admin-link:hover{background:#f8fafc;color:#6366f1;}
+
+    /* ── Main ── */
+    .main{flex:1;display:flex;flex-direction:column;height:100vh;min-width:0;}
+    .main-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#94a3b8;}
+    .main-empty .icon{font-size:48px;}
+    .main-empty p{font-size:14px;}
+
+    /* Chat header */
+    .chat-header{padding:14px 24px;border-bottom:1px solid #e2e8f0;background:#fff;display:flex;align-items:center;gap:12px;}
+    .chat-header-info{flex:1;}
+    .chat-header-name{font-size:15px;font-weight:700;}
+    .chat-header-sub{font-size:12px;color:#64748b;display:flex;gap:8px;align-items:center;margin-top:2px;}
+    .chat-actions{display:flex;gap:8px;}
+    .btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #e2e8f0;transition:all .15s;}
+    .btn-mode{background:#fff;color:#64748b;}
+    .btn-mode.agent-active{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+    .btn-mode.bot-active{background:#f97316;color:#fff;border-color:#f97316;}
+    .btn-resolve{background:#22c55e;color:#fff;border-color:#22c55e;}
+    .btn-resolve:hover{background:#16a34a;}
+
+    /* Messages */
+    .chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;background:#f8fafc;}
+    .chat-messages::-webkit-scrollbar{width:5px;}.chat-messages::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px;}
+    .msg{display:flex;gap:8px;align-items:flex-end;max-width:70%;}
+    .msg.user{align-self:flex-start;}.msg.bot{align-self:flex-start;}.msg.agent{align-self:flex-end;flex-direction:row-reverse;}
+    .msg-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .msg.user .msg-av{background:#dbeafe;}.msg.bot .msg-av{background:#fff7ed;}.msg.agent .msg-av{background:#7c3aed;color:#fff;}
+    .msg-inner{}
+    .msg-sender{font-size:10px;color:#94a3b8;margin-bottom:2px;padding:0 4px;}
+    .bubble{padding:9px 13px;border-radius:16px;font-size:13px;line-height:1.55;word-break:break-word;white-space:pre-wrap;}
+    .msg.user .bubble{background:#fff;border:1px solid #e2e8f0;border-bottom-left-radius:4px;}
+    .msg.bot .bubble{background:#fff7ed;border:1px solid #fed7aa;border-bottom-left-radius:4px;}
+    .msg.agent .bubble{background:#6366f1;color:#fff;border-bottom-right-radius:4px;}
+    .msg-time{font-size:10px;color:#cbd5e1;margin-top:3px;padding:0 4px;}
+    .date-divider{text-align:center;font-size:11px;color:#94a3b8;padding:8px 0;}
+
+    /* Reply area */
+    .reply-area{padding:16px 24px;border-top:1px solid #e2e8f0;background:#fff;}
+    .reply-hint{font-size:12px;color:#94a3b8;margin-bottom:8px;}
+    .reply-box{display:flex;gap:8px;align-items:flex-end;}
+    .reply-box textarea{flex:1;resize:none;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;max-height:100px;line-height:1.5;transition:border-color .2s;}
+    .reply-box textarea:focus{border-color:#6366f1;}
+    .reply-box textarea:disabled{background:#f8fafc;cursor:not-allowed;}
+    .btn-send{padding:10px 18px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;flex-shrink:0;}
+    .btn-send:hover{background:#4f46e5;}.btn-send:disabled{background:#cbd5e1;cursor:default;}
+    .btn-img-upload{width:36px;height:36px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .btn-img-upload:hover{background:#e2e8f0;}.btn-img-upload:disabled{opacity:.4;cursor:default;}
+    .img-preview{margin-bottom:8px;display:none;}
+    .img-preview img{max-height:80px;border-radius:8px;border:1px solid #e2e8f0;}
+    .img-preview .remove{cursor:pointer;font-size:12px;color:#ef4444;margin-left:6px;}
+    .msg-img{max-width:200px;border-radius:10px;display:block;cursor:pointer;}
+    .msg-img:hover{opacity:.9;}
+
+    /* ── Orders ── */
+    .order-item{padding:14px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .1s;}
+    .order-item:hover{background:#f8fafc;}.order-item.active{background:#eef2ff;}
+    .order-no{font-size:12px;font-weight:700;color:#6366f1;}
+    .order-name{font-size:13px;font-weight:600;color:#1e293b;}
+    .order-summary{font-size:12px;color:#64748b;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .order-meta{display:flex;gap:6px;align-items:center;margin-top:4px;}
+    .status-badge{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;}
+    .status-badge.pending{background:#fef9c3;color:#854d0e;}
+    .status-badge.confirmed{background:#dcfce7;color:#166534;}
+    .status-badge.completed{background:#e0f2fe;color:#075985;}
+    .status-badge.cancelled{background:#fee2e2;color:#991b1b;}
+    .pay-badge{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;}
+    .pay-badge.unpaid{background:#fff7ed;color:#c2410c;}
+    .pay-badge.paid{background:#f0fdf4;color:#166534;}
+    .order-panel{padding:24px;overflow-y:auto;flex:1;}
+    .order-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .order-detail-title{font-size:17px;font-weight:700;}
+    .order-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+    .order-section-title{font-size:12px;font-weight:600;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
+    .order-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
+    .order-row .label{color:#64748b;}
+    .order-row .val{font-weight:500;}
+    .order-items-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .order-items-table th{text-align:left;color:#64748b;font-weight:600;padding:4px 8px;border-bottom:1px solid #e2e8f0;}
+    .order-items-table td{padding:6px 8px;border-bottom:1px solid #f1f5f9;}
+    .order-total{font-size:15px;font-weight:700;text-align:right;margin-top:8px;color:#6366f1;}
+    .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+    .btn-confirm{background:#22c55e;color:#fff;border:none;}
+    .btn-complete{background:#6366f1;color:#fff;border:none;}
+    .btn-cancel{background:#ef4444;color:#fff;border:none;}
+    .btn-paid{background:#0ea5e9;color:#fff;border:none;}
+    .btn-secondary{background:#fff;color:#64748b;border:1px solid #e2e8f0;}
+    .new-order-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;margin-left:4px;animation:pulse 1.5s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1><span class="dot"></span>客服後台</h1>
+    <span id="online-count" style="font-size:12px;color:#64748b"></span>
+  </div>
+  <div class="filter-tabs">
+    <div class="tab active" onclick="setFilter('open',this)">進行中</div>
+    <div class="tab" onclick="setFilter('resolved',this)">已解決</div>
+    <div class="tab" id="order-tab" onclick="setFilter('orders',this)">訂單<span id="new-order-dot" style="display:none" class="new-order-dot"></span></div>
+  </div>
+  <div class="search-bar" id="search-bar">
+    <input id="search-input" type="text" placeholder="搜尋名稱或 #標籤…" oninput="onSearchInput(this.value)"/>
+  </div>
+  <div class="tag-filter-row" id="tag-filter-row"></div>
+  <div class="conv-list" id="conv-list"></div>
+  <div class="sidebar-footer">
+    <a href="/admin" class="admin-link">⚙️ 商家管理後台</a>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="main" id="main">
+  <div class="main-empty">
+    <div class="icon">💬</div>
+    <p>選擇左側對話以開始回覆</p>
+  </div>
+</div>
+
+<script>
+  let ws = null;
+  let conversations = {};  // id -> conv
+  let activeConvId = null;
+  let currentFilter = 'open';
+  let orders = {};          // id -> order
+  let activeOrderId = null;
+  let searchQuery = '';     // 搜尋關鍵字
+  let activeTagFilter = ''; // 點擊 tag 篩選
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws/dashboard`);
+
+    ws.onopen = () => {
+      console.log('Dashboard WS connected');
+      setInterval(() => ws.readyState === WebSocket.OPEN && ws.send('ping'), 30000);
+    };
+
+    ws.onmessage = (e) => {
+      const evt = JSON.parse(e.data);
+      handleEvent(evt);
+    };
+
+    ws.onclose = () => setTimeout(connectWS, 2000);
+  }
+
+  function handleEvent(evt) {
+    if (evt.type === 'init') {
+      conversations = {};
+      evt.conversations.forEach(c => conversations[c.id] = c);
+      renderList();
+    } else if (evt.type === 'new_message') {
+      const c = conversations[evt.conversation_id];
+      if (c) {
+        c.last_message = evt.last_message;
+        c.unread = evt.unread;
+        c.mode = evt.mode;
+        c.updated_at = new Date().toISOString();
+      } else {
+        // 新對話
+        conversations[evt.conversation_id] = {
+          id: evt.conversation_id,
+          contact_name: evt.contact_name,
+          channel: evt.channel,
+          mode: evt.mode,
+          status: 'open',
+          unread: evt.unread,
+          last_message: evt.last_message,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      renderList();
+      if (activeConvId === evt.conversation_id) {
+        appendMessageToView(evt.message);
+        markRead(evt.conversation_id);
+      } else {
+        updateUnreadBadge(evt.conversation_id, conversations[evt.conversation_id]?.unread);
+      }
+    } else if (evt.type === 'mode_changed') {
+      if (conversations[evt.conversation_id]) {
+        conversations[evt.conversation_id].mode = evt.mode;
+        renderList();
+        if (activeConvId === evt.conversation_id) updateModeBtn(evt.mode);
+      }
+    } else if (evt.type === 'resolved') {
+      delete conversations[evt.conversation_id];
+      renderList();
+      if (activeConvId === evt.conversation_id) {
+        activeConvId = null;
+        renderEmpty();
+      }
+    } else if (evt.type === 'conv_tags_updated') {
+      if (conversations[evt.conversation_id]) {
+        conversations[evt.conversation_id].tags = evt.tags;
+        renderList();
+        if (activeConvId === evt.conversation_id) renderConvTags(evt.conversation_id, evt.tags);
+      }
+    } else if (evt.type === 'new_order') {
+      orders[evt.order.id] = evt.order;
+      document.getElementById('new-order-dot').style.display = 'inline-block';
+      if (currentFilter === 'orders') renderList();
+      // 音效提示
+      try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA').play(); } catch(e){}
+    } else if (evt.type === 'order_updated') {
+      orders[evt.order.id] = evt.order;
+      if (currentFilter === 'orders') renderList();
+      if (activeOrderId === evt.order.id) renderOrderDetail(evt.order);
+    }
+  }
+
+  // ── Render list ───────────────────────────────────────────────────────────
+  // ── Search & Tag Filter ───────────────────────────────────────────────────
+  function onSearchInput(val) {
+    searchQuery = val.trim().toLowerCase();
+    // 若輸入 #xxx 自動設為 tag 篩選
+    const tagMatch = searchQuery.match(/^#(.+)$/);
+    if (tagMatch) {
+      activeTagFilter = tagMatch[1];
+    } else {
+      activeTagFilter = '';
+    }
+    renderList();
+  }
+
+  function toggleTagFilter(tag) {
+    if (activeTagFilter === tag) {
+      activeTagFilter = '';
+      const inp = document.getElementById('search-input');
+      if (inp) inp.value = '';
+      searchQuery = '';
+    } else {
+      activeTagFilter = tag;
+      const inp = document.getElementById('search-input');
+      if (inp) { inp.value = '#' + tag; searchQuery = '#' + tag; }
+    }
+    renderTagFilterRow();
+    renderList();
+  }
+
+  function renderTagFilterRow() {
+    const row = document.getElementById('tag-filter-row');
+    if (!row || currentFilter === 'orders') { if (row) row.innerHTML = ''; return; }
+    // 收集目前所有對話的 tags
+    const allTags = [...new Set(
+      Object.values(conversations)
+        .filter(c => c.status === currentFilter)
+        .flatMap(c => c.tags || [])
+    )];
+    if (!allTags.length) { row.innerHTML = ''; return; }
+    row.innerHTML = allTags.map(t =>
+      `<span class="tag-filter-chip ${activeTagFilter === t ? 'active' : ''}" onclick="toggleTagFilter('${esc(t)}')">#${esc(t)}</span>`
+    ).join('');
+  }
+
+  function setFilter(status, el) {
+    currentFilter = status;
+    searchQuery = ''; activeTagFilter = '';
+    const inp = document.getElementById('search-input');
+    if (inp) inp.value = '';
+    // 訂單模式隱藏搜尋列
+    const sb = document.getElementById('search-bar');
+    if (sb) sb.style.display = status === 'orders' ? 'none' : '';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    if (status === 'resolved') {
+      fetch('/api/conversations?status=resolved').then(r=>r.json()).then(data => {
+        data.forEach(c => { if (!conversations[c.id] || conversations[c.id].status === 'resolved') conversations[c.id] = c; });
+        renderList();
+      });
+    } else if (status === 'orders') {
+      document.getElementById('new-order-dot').style.display = 'none';
+      fetch('/api/orders').then(r=>r.json()).then(data => {
+        data.forEach(o => orders[o.id] = o);
+        renderList();
+      });
+    } else {
+      renderList();
+    }
+  }
+
+  function renderList() {
+    const list = document.getElementById('conv-list');
+
+    if (currentFilter === 'orders') {
+      const items = Object.values(orders).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      if (!items.length) { list.innerHTML = '<div class="empty-conv">尚無訂單</div>'; return; }
+      list.innerHTML = items.map(o => {
+        const itemNames = o.items.map(i => `${i.name}x${i.qty}`).join('、');
+        return `<div class="order-item ${o.id === activeOrderId ? 'active' : ''}" onclick="openOrder(${o.id})" id="order-${o.id}">
+          <div class="order-no">${esc(o.order_no)}</div>
+          <div class="order-name">${esc(o.contact_name)} ${esc(o.contact_phone)}</div>
+          <div class="order-summary">${esc(itemNames)} · $${o.total}</div>
+          <div class="order-meta">
+            <span class="status-badge ${o.status}">${statusLabel(o.status)}</span>
+            <span class="pay-badge ${o.payment_status}">${o.payment_status === 'paid' ? '已付款' : '未付款'}</span>
+            <span style="font-size:10px;color:#94a3b8;margin-left:auto">${relTime(o.created_at)}</span>
+          </div>
+        </div>`;
+      }).join('');
+      return;
+    }
+
+    let items = Object.values(conversations)
+      .filter(c => c.status === currentFilter);
+
+    // tag 篩選
+    if (activeTagFilter) {
+      items = items.filter(c => (c.tags||[]).includes(activeTagFilter));
+    }
+    // 關鍵字搜尋（名稱 or 最後訊息，排除 #xxx 的情況）
+    if (searchQuery && !searchQuery.startsWith('#')) {
+      items = items.filter(c =>
+        (c.contact_name||'').toLowerCase().includes(searchQuery) ||
+        (c.last_message||'').toLowerCase().includes(searchQuery)
+      );
+    }
+
+    items.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));
+    renderTagFilterRow();
+
+    if (!items.length) { list.innerHTML = `<div class="empty-conv">${activeTagFilter || searchQuery ? '沒有符合的對話' : '尚無對話'}</div>`; return; }
+
+    list.innerHTML = items.map(c => `
+      <div class="conv-item ${c.id === activeConvId ? 'active' : ''}" onclick="openConv(${c.id})" id="conv-${c.id}">
+        <div class="conv-avatar">${channelIcon(c.channel)}</div>
+        <div class="conv-body">
+          <div class="conv-top">
+            <span class="conv-name">${esc(c.contact_name)}</span>
+            <span class="conv-time">${relTime(c.updated_at)}</span>
+          </div>
+          <div class="conv-preview">${esc(c.last_message || '…')}</div>
+          <div class="conv-meta">
+            <span class="badge-channel ${c.channel}">${c.channel}</span>
+            <span class="badge-mode ${c.mode}">${c.mode === 'bot' ? '🤖 Bot' : '👤 人工'}</span>
+            ${(c.tags||[]).map(t=>`<span style="font-size:10px;padding:1px 6px;border-radius:999px;background:#eff6ff;color:#2563eb;font-weight:500;cursor:pointer" onclick="event.stopPropagation();toggleTagFilter('${esc(t)}')" title="篩選 #${esc(t)}">${esc(t)}</span>`).join('')}
+            ${c.unread > 0 ? `<span class="unread" id="unread-${c.id}">${c.unread}</span>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Open conversation ─────────────────────────────────────────────────────
+  async function openConv(id) {
+    activeConvId = id;
+    renderList();
+    markRead(id);
+
+    const conv = conversations[id];
+    const res = await fetch(`/api/conversations/${id}/messages`);
+    const messages = await res.json();
+
+    const main = document.getElementById('main');
+    main.innerHTML = `
+      <div class="chat-header">
+        <div class="conv-avatar" style="width:40px;height:40px;font-size:18px">${channelIcon(conv.channel)}</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">${esc(conv.contact_name)}</div>
+          <div class="chat-header-sub">
+            <span class="badge-channel ${conv.channel}">${conv.channel}</span>
+            <span id="mode-label">${conv.mode === 'bot' ? '🤖 Bot 自動回覆' : '👤 人工客服中'}</span>
+          </div>
+        </div>
+        <div class="chat-actions">
+          <button class="btn btn-mode ${conv.mode === 'agent' ? 'agent-active' : 'bot-active'}" id="mode-btn" onclick="toggleMode(${id})">
+            ${conv.mode === 'agent' ? '切回 Bot' : '切換人工'}
+          </button>
+          <button class="btn btn-resolve" onclick="resolveConv(${id})">✓ 完成</button>
+        </div>
+      </div>
+      <div id="conv-tag-bar" style="padding:6px 24px;border-bottom:1px solid #f1f5f9;background:#fafbff;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:36px"></div>
+      <div class="chat-messages" id="chat-msgs">
+        ${messages.map(m => msgHTML(m)).join('')}
+      </div>
+      <div class="reply-area">
+        <div class="reply-hint" id="reply-hint">${conv.mode === 'agent' ? '以客服人員身份回覆' : '⚠️ 目前為 Bot 模式，切換人工後才能回覆'}</div>
+        <div class="img-preview" id="img-preview">
+          <img id="img-preview-img" src=""/>
+          <span class="remove" onclick="clearImgPreview()">✕ 移除</span>
+        </div>
+        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgSelect(this,${id})"/>
+        <div class="reply-box">
+          <button class="btn-img-upload" id="img-upload-btn" onclick="document.getElementById('img-file-input').click()" ${conv.mode !== 'agent' ? 'disabled' : ''} title="傳送圖片">📷</button>
+          <textarea id="reply-input" placeholder="輸入回覆…" rows="2" ${conv.mode !== 'agent' ? 'disabled' : ''}
+            onkeydown="handleReplyKey(event,${id})"></textarea>
+          <button class="btn-send" id="reply-btn" onclick="sendReply(${id})" ${conv.mode !== 'agent' ? 'disabled' : ''}>傳送</button>
+        </div>
+      </div>`;
+
+    const msgs = document.getElementById('chat-msgs');
+    msgs.scrollTop = msgs.scrollHeight;
+
+    // 載入並渲染標籤
+    const tags = conv.tags || await fetch(`/api/conversations/${id}/tags`).then(r=>r.json());
+    if (conversations[id]) conversations[id].tags = tags;
+    renderConvTags(id, tags);
+  }
+
+  function msgHTML(m) {
+    const icons = {user:'👤',bot:'🤖',agent:'🙋'};
+    const labels = {user:'客戶',bot:'Bot',agent:'客服'};
+    let body = '';
+    if (m.message_type === 'image' && m.media_url) {
+      body = `<img class="msg-img" src="${m.media_url}" onclick="window.open(this.src,'_blank')" loading="lazy"/>
+              ${m.content ? `<div style="font-size:12px;margin-top:4px">${esc(m.content)}</div>` : ''}`;
+    } else {
+      body = esc(m.content);
+    }
+    return `<div class="msg ${m.role}">
+      <div class="msg-av">${icons[m.role]||'?'}</div>
+      <div class="msg-inner">
+        <div class="msg-sender">${labels[m.role]||m.role}</div>
+        <div class="bubble">${body}</div>
+        <div class="msg-time">${fmtTime(m.created_at)}</div>
+      </div>
+    </div>`;
+  }
+
+  let pendingImgUrl = '';
+
+  async function handleImgSelect(input, convId) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/upload', {method:'POST', body: form});
+    const data = await res.json();
+    pendingImgUrl = data.url;
+    const preview = document.getElementById('img-preview');
+    document.getElementById('img-preview-img').src = pendingImgUrl;
+    preview.style.display = 'block';
+  }
+
+  function clearImgPreview() {
+    pendingImgUrl = '';
+    document.getElementById('img-preview').style.display = 'none';
+    document.getElementById('img-preview-img').src = '';
+  }
+
+  function appendMessageToView(m) {
+    const container = document.getElementById('chat-msgs');
+    if (!container) return;
+    container.insertAdjacentHTML('beforeend', msgHTML(m));
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function toggleMode(id) {
+    const conv = conversations[id];
+    if (!conv) return;
+    const newMode = conv.mode === 'bot' ? 'agent' : 'bot';
+    await fetch(`/api/conversations/${id}/mode`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mode: newMode})
+    });
+    conv.mode = newMode;
+    updateModeBtn(newMode);
+    renderList();
+  }
+
+  function updateModeBtn(mode) {
+    const btn = document.getElementById('mode-btn');
+    const hint = document.getElementById('reply-hint');
+    const input = document.getElementById('reply-input');
+    const replyBtn = document.getElementById('reply-btn');
+    const label = document.getElementById('mode-label');
+    if (!btn) return;
+    btn.textContent = mode === 'agent' ? '切回 Bot' : '切換人工';
+    btn.className = `btn btn-mode ${mode === 'agent' ? 'agent-active' : 'bot-active'}`;
+    if (label) label.textContent = mode === 'agent' ? '👤 人工客服中' : '🤖 Bot 自動回覆';
+    if (hint) hint.textContent = mode === 'agent' ? '以客服人員身份回覆' : '⚠️ 目前為 Bot 模式，切換人工後才能回覆';
+    if (input) input.disabled = mode !== 'agent';
+    if (replyBtn) replyBtn.disabled = mode !== 'agent';
+    const imgBtn = document.getElementById('img-upload-btn');
+    if (imgBtn) imgBtn.disabled = mode !== 'agent';
+  }
+
+  async function sendReply(id) {
+    const input = document.getElementById('reply-input');
+    const text = input?.value.trim();
+    if (!text && !pendingImgUrl) return;
+    input.value = '';
+    const body = pendingImgUrl
+      ? {content: text, message_type: 'image', media_url: pendingImgUrl}
+      : {content: text, message_type: 'text'};
+    clearImgPreview();
+    await fetch(`/api/conversations/${id}/reply`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+  }
+
+  function handleReplyKey(e, id) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(id); }
+  }
+
+  async function resolveConv(id) {
+    if (!confirm('確定標記此對話為已完成？')) return;
+    await fetch(`/api/conversations/${id}/resolve`, {method:'POST'});
+  }
+
+  function markRead(id) {
+    if (conversations[id]) conversations[id].unread = 0;
+    document.getElementById(`unread-${id}`)?.remove();
+  }
+
+  function updateUnreadBadge(id, count) {
+    const el = document.getElementById(`unread-${id}`);
+    if (count > 0) {
+      if (el) el.textContent = count;
+      // re-render will handle badge if not present
+      renderList();
+    }
+  }
+
+  function renderEmpty() {
+    document.getElementById('main').innerHTML = `
+      <div class="main-empty"><div class="icon">💬</div><p>選擇左側對話以開始回覆</p></div>`;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function channelIcon(ch) {
+    return {telegram:'✈️',line:'💬',web:'🌐'}[ch] || '💬';
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function relTime(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (diff < 60000) return '剛剛';
+    if (diff < 3600000) return Math.floor(diff/60000) + '分前';
+    if (diff < 86400000) return Math.floor(diff/3600000) + '時前';
+    return new Date(iso).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});
+  }
+
+  function fmtTime(iso) {
+    return new Date(iso).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // ── Conversation Tags ─────────────────────────────────────────────────────
+  const CONV_PRESET_TAGS = ['VIP','投訴','待跟進','已處理','重要','垃圾訊息'];
+
+  function renderConvTags(convId, tags) {
+    const bar = document.getElementById('conv-tag-bar');
+    if (!bar) return;
+    const chips = (tags||[]).map(t =>
+      `<span style="display:inline-flex;align-items:center;gap:3px;background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:500">
+        ${esc(t)}
+        <span style="cursor:pointer;opacity:.6;font-size:11px" onclick="removeConvTag(${convId},'${esc(t)}')">✕</span>
+      </span>`
+    ).join('');
+
+    const presetBtns = CONV_PRESET_TAGS.filter(t => !(tags||[]).includes(t)).map(t =>
+      `<span style="display:inline-flex;align-items:center;background:#f8fafc;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:999px;padding:2px 8px;font-size:11px;cursor:pointer"
+        onclick="addConvTag(${convId},'${t}')">${t}</span>`
+    ).join('');
+
+    bar.innerHTML = `
+      <span style="font-size:11px;color:#94a3b8;flex-shrink:0">標籤：</span>
+      ${chips}
+      ${presetBtns}
+      <span style="display:inline-flex;align-items:center;gap:3px;margin-left:2px">
+        <input id="conv-tag-input" placeholder="自訂…" style="width:68px;padding:2px 6px;border:1px solid #e2e8f0;border-radius:999px;font-size:11px;outline:none"
+          onkeydown="if(event.key==='Enter')addConvTag(${convId},this.value)"/>
+        <span style="font-size:11px;color:#6366f1;cursor:pointer" onclick="addConvTag(${convId},document.getElementById('conv-tag-input').value)">＋</span>
+      </span>`;
+  }
+
+  async function addConvTag(convId, tag) {
+    tag = (tag||'').trim();
+    if (!tag) return;
+    const res = await fetch(`/api/conversations/${convId}/tags`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag})
+    });
+    const data = await res.json();
+    if (conversations[convId]) conversations[convId].tags = data.tags;
+    renderConvTags(convId, data.tags);
+    renderList();
+    const inp = document.getElementById('conv-tag-input');
+    if (inp) inp.value = '';
+  }
+
+  async function removeConvTag(convId, tag) {
+    const res = await fetch(`/api/conversations/${convId}/tags/${encodeURIComponent(tag)}`, {method:'DELETE'});
+    const data = await res.json();
+    if (conversations[convId]) conversations[convId].tags = data.tags;
+    renderConvTags(convId, data.tags);
+    renderList();
+  }
+
+  // ── Orders ────────────────────────────────────────────────────────────────
+  async function openOrder(id) {
+    activeOrderId = id;
+    activeConvId = null;
+    renderList();
+    const o = orders[id] || await fetch(`/api/orders/${id}`).then(r=>r.json());
+    orders[id] = o;
+    renderOrderDetail(o);
+  }
+
+  function renderOrderDetail(o) {
+    const main = document.getElementById('main');
+    const pickupLabel = o.pickup_type === 'delivery' ? '🛵 外送' : '🏪 外帶';
+    const rows = o.items.map(it => {
+      const spec = it.spec ? `（${it.spec}）` : '';
+      return `<tr>
+        <td>${esc(it.name)}${esc(spec)}</td>
+        <td style="text-align:center">${it.qty}</td>
+        <td style="text-align:right">${it.unit_price}</td>
+        <td style="text-align:right;font-weight:600">${it.subtotal || it.unit_price * it.qty}</td>
+      </tr>`;
+    }).join('');
+
+    main.innerHTML = `
+      <div class="order-panel">
+        <div class="order-detail-header">
+          <div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:2px">訂單詳情</div>
+            <div class="order-detail-title">${esc(o.order_no)}</div>
+          </div>
+          <span class="status-badge ${o.status}" style="font-size:12px;padding:4px 12px">${statusLabel(o.status)}</span>
+        </div>
+
+        <div class="order-section">
+          <div class="order-section-title">客戶資訊</div>
+          <div class="order-row"><span class="label">姓名</span><span class="val">${esc(o.contact_name)}</span></div>
+          <div class="order-row"><span class="label">電話</span><span class="val">${esc(o.contact_phone)}</span></div>
+          <div class="order-row"><span class="label">取餐方式</span><span class="val">${pickupLabel}</span></div>
+          ${o.delivery_address ? `<div class="order-row"><span class="label">地址</span><span class="val">${esc(o.delivery_address)}</span></div>` : ''}
+        </div>
+
+        <div class="order-section">
+          <div class="order-section-title">訂單明細</div>
+          <table class="order-items-table">
+            <thead><tr><th>品項</th><th style="text-align:center">數量</th><th style="text-align:right">單價</th><th style="text-align:right">小計</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="order-total">合計：${o.total} 元</div>
+        </div>
+
+        <div class="order-section">
+          <div class="order-section-title">付款狀態</div>
+          <div class="order-row">
+            <span class="label">付款</span>
+            <span class="val">
+              <span class="pay-badge ${o.payment_status}">${o.payment_status === 'paid' ? '✅ 已付款' : '⏳ 未付款'}</span>
+            </span>
+          </div>
+          <div class="action-row" style="margin-top:10px">
+            ${o.payment_status === 'unpaid'
+              ? `<button class="btn btn-paid" onclick="updateOrder(${o.id},{payment_status:'paid'})">✅ 標記已付款</button>`
+              : `<button class="btn btn-secondary" onclick="updateOrder(${o.id},{payment_status:'unpaid'})">↩ 取消付款</button>`}
+          </div>
+        </div>
+
+        <div class="order-section">
+          <div class="order-section-title">訂單操作</div>
+          <div class="action-row">
+            ${o.status === 'pending'   ? `<button class="btn btn-confirm"  onclick="updateOrder(${o.id},{status:'confirmed'})">✓ 確認訂單</button>` : ''}
+            ${o.status === 'confirmed' ? `<button class="btn btn-complete" onclick="updateOrder(${o.id},{status:'completed'})">🏁 完成訂單</button>` : ''}
+            ${o.status !== 'cancelled' && o.status !== 'completed'
+              ? `<button class="btn btn-cancel" onclick="updateOrder(${o.id},{status:'cancelled'})">✕ 取消訂單</button>` : ''}
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:8px">建立時間：${fmtTime(o.created_at)}</div>
+        </div>
+      </div>`;
+  }
+
+  async function updateOrder(id, fields) {
+    const res = await fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(fields),
+    });
+    const updated = await res.json();
+    orders[id] = updated;
+    if (activeOrderId === id) renderOrderDetail(updated);
+    renderList();
+  }
+
+  function statusLabel(s) {
+    return {pending:'待確認', confirmed:'已確認', completed:'已完成', cancelled:'已取消'}[s] || s;
+  }
+
+  connectWS();
+</script>
+</body>
+</html>

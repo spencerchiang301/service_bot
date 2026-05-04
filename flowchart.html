@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Bot 系統流程圖</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    color: #7dd3fc;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+  }
+  .section {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+  .section h2 {
+    font-size: 1.1rem;
+    color: #38bdf8;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: #38bdf8;
+    border-radius: 2px;
+  }
+  .mermaid {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .mermaid svg {
+    max-width: 100%;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Service Bot 系統流程圖</h1>
+<p class="subtitle">FastAPI × OpenAI × Qdrant × Telegram / LINE / Web</p>
+
+<!-- 1. 系統架構總覽 -->
+<div class="section">
+  <h2>1. 系統架構總覽</h2>
+  <div class="mermaid">
+graph TB
+    subgraph 用戶端["📱 用戶端"]
+      WEB["🌐 Web Chat\n(WebSocket)"]
+      TG["✈️ Telegram\n(Webhook)"]
+      LINE["💬 LINE\n(Webhook)"]
+    end
+
+    subgraph FastAPI["⚡ FastAPI 後端 (main.py)"]
+      ROUTER["路由分發"]
+      WS_CUST["WebSocket\n客戶連線管理\n(ws_manager.py)"]
+      WS_DASH["WebSocket\n客服儀表板"]
+    end
+
+    subgraph 核心邏輯["🧠 核心邏輯"]
+      ORDER_FLOW["訂單狀態機\n(order_flow.py)"]
+      RAG["RAG 問答\n(rag.py)"]
+      STATE["記憶體 Session\n(state.py)"]
+    end
+
+    subgraph 資料層["💾 資料層"]
+      DB["SQLite 資料庫\n(db.py)"]
+      QDRANT["Qdrant\n向量資料庫"]
+    end
+
+    subgraph 外部服務["☁️ 外部服務"]
+      OPENAI_CHAT["OpenAI GPT-4o\n(對話生成)"]
+      OPENAI_EMBED["OpenAI Embedding\n(text-embedding-3-small)"]
+      TG_API["Telegram Bot API"]
+      LINE_API["LINE Messaging API"]
+    end
+
+    subgraph 管理介面["🖥️ 管理介面"]
+      FRONTEND["客戶 Web 介面\n(frontend/)"]
+      DASHBOARD["客服儀表板\n(dashboard/)"]
+      ADMIN["管理後台\n(admin/)"]
+    end
+
+    WEB -->|WebSocket| WS_CUST
+    TG -->|POST Webhook| ROUTER
+    LINE -->|POST Webhook| ROUTER
+
+    ROUTER --> ORDER_FLOW
+    ROUTER --> RAG
+    ORDER_FLOW <--> STATE
+    RAG --> OPENAI_EMBED
+    RAG --> QDRANT
+    RAG --> OPENAI_CHAT
+    ORDER_FLOW --> OPENAI_CHAT
+
+    ROUTER --> DB
+    WS_CUST --> WS_DASH
+    WS_DASH --> DASHBOARD
+
+    ROUTER -->|Reply| TG_API
+    ROUTER -->|Reply| LINE_API
+    TG_API --> TG
+    LINE_API --> LINE
+
+    ADMIN -->|CRUD| DB
+    ADMIN -->|上傳/匯入| QDRANT
+    FRONTEND --> WS_CUST
+
+    style 用戶端 fill:#1e3a5f,stroke:#3b82f6
+    style FastAPI fill:#1a3a2a,stroke:#22c55e
+    style 核心邏輯 fill:#3b1f5e,stroke:#a855f7
+    style 資料層 fill:#3a2a1a,stroke:#f59e0b
+    style 外部服務 fill:#1a2a3a,stroke:#38bdf8
+    style 管理介面 fill:#2a1a3a,stroke:#e879f9
+  </div>
+</div>
+
+<!-- 2. 訊息處理主流程 -->
+<div class="section">
+  <h2>2. 訊息處理主流程</h2>
+  <div class="mermaid">
+flowchart TD
+    START(["📩 收到用戶訊息\nWeb / Telegram / LINE"])
+
+    A["取得或建立 Contact\nget_or_create_contact()"]
+    B["取得或建立 Conversation\nget_or_create_conversation()"]
+    C["儲存用戶訊息到 DB\nsave_message(role='user')"]
+    D["廣播給客服儀表板\ndashboard_mgr.broadcast()"]
+
+    MODE{"Conversation\n模式？"}
+
+    SKIP["⏸️ 跳過 Bot 處理\n等待真人客服回覆"]
+
+    CHECK_STATE{"此用戶正在\n訂單流程中？\norder_states[session]"}
+
+    DETECT["LLM 意圖分析\ndetect_and_extract()\n(order / order_no_items / inquiry)"]
+
+    INT_ORDER{"意圖？"}
+
+    START_ORDER["開始訂單流程\nstart_order(items)\n狀態 → confirm_items"]
+    ASK_ITEMS["請用戶說明\n要點什麼"]
+    RAG_CHAT["RAG 問答\nretrieve() + chat()"]
+
+    HANDLE_STEP["訂單狀態機\nhandle_step(message, state)"]
+
+    GEN_REPLY["產生 Bot 回覆\n(含按鈕 pending_buttons)"]
+    SAVE_BOT["儲存 Bot 訊息\nsave_message(role='bot')"]
+    BROADCAST["廣播給儀表板\n+ 回傳給用戶"]
+
+    SEND{"發送管道"}
+    SEND_WS["WebSocket\n(stream_token → stream_end)"]
+    SEND_TG["Telegram API\n(sendMessage + keyboard)"]
+    SEND_LINE["LINE API\n(reply + quickReply)"]
+
+    END(["✅ 完成"])
+
+    START --> A --> B --> C --> D --> MODE
+
+    MODE -->|agent| SKIP --> END
+    MODE -->|bot| CHECK_STATE
+
+    CHECK_STATE -->|是| HANDLE_STEP
+    CHECK_STATE -->|否| DETECT --> INT_ORDER
+
+    INT_ORDER -->|order| START_ORDER
+    INT_ORDER -->|order_no_items| ASK_ITEMS
+    INT_ORDER -->|inquiry| RAG_CHAT
+
+    START_ORDER --> GEN_REPLY
+    ASK_ITEMS --> GEN_REPLY
+    RAG_CHAT --> GEN_REPLY
+    HANDLE_STEP --> GEN_REPLY
+
+    GEN_REPLY --> SAVE_BOT --> BROADCAST --> SEND
+
+    SEND -->|Web| SEND_WS --> END
+    SEND -->|Telegram| SEND_TG --> END
+    SEND -->|LINE| SEND_LINE --> END
+
+    style START fill:#1d4ed8,stroke:#3b82f6,color:#fff
+    style END fill:#166534,stroke:#22c55e,color:#fff
+    style SKIP fill:#713f12,stroke:#f59e0b,color:#fff
+    style MODE fill:#4c1d95,stroke:#a855f7,color:#fff
+    style CHECK_STATE fill:#4c1d95,stroke:#a855f7,color:#fff
+    style INT_ORDER fill:#4c1d95,stroke:#a855f7,color:#fff
+  </div>
+</div>
+
+<!-- 3. 訂單收集狀態機 -->
+<div class="section">
+  <h2>3. 訂單收集狀態機</h2>
+  <div class="mermaid">
+stateDiagram-v2
+    [*] --> confirm_items : start_order(items)\n顯示品項清單 + 確認/取消按鈕
+
+    confirm_items --> pickup_type : 用戶點「確認」\n進入取餐方式選擇
+    confirm_items --> [*] : 用戶點「取消」\n清除訂單狀態
+
+    pickup_type --> address : 用戶選「外送」\n詢問配送地址
+    pickup_type --> contact : 用戶選「外帶」\n詢問姓名+電話
+
+    address --> contact : 用戶輸入地址\n詢問姓名+電話
+
+    contact --> __done__ : 用戶輸入「姓名 電話」\n解析並儲存
+
+    __done__ --> [*] : db.create_order()\n建立訂單 ORD-MMDD-NNN\n廣播 new_order 事件
+  </div>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#a855f7"></div>
+      <span>每個狀態：handle_step() 接收用戶輸入 → 驗證 → 轉換下一狀態</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#38bdf8"></div>
+      <span>每個狀態下 get_buttons(state) 回傳對應平台按鈕</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#f59e0b"></div>
+      <span>訂單狀態存於記憶體 order_states dict（key: session_id）</span>
+    </div>
+  </div>
+</div>
+
+<!-- 4. RAG 知識庫問答流程 -->
+<div class="section">
+  <h2>4. RAG 知識庫問答流程</h2>
+  <div class="mermaid">
+flowchart LR
+    subgraph 知識庫建立["📚 知識庫建立 (ingest.py)"]
+      direction TB
+      FILES["data/ 目錄\n.xlsx / .txt / .md / .pdf"]
+      PARSE["解析 & 切塊\n400字元 / 重疊切割"]
+      EMBED_I["OpenAI Embedding\ntext-embedding-3-small\n1536 維向量"]
+      UPSERT["Upsert 到 Qdrant\ncollection: service_bot"]
+      FILES --> PARSE --> EMBED_I --> UPSERT
+    end
+
+    subgraph 即時問答["💬 即時問答 (rag.py)"]
+      direction TB
+      QUERY["用戶問題"]
+      EMBED_Q["embed(query)\n產生查詢向量"]
+      SEARCH["qdrant.query_points()\nCosine 相似度搜尋\n回傳 Top-K 文段"]
+      CONTEXT["組合 Context\n相關文段 + 對話歷史"]
+      LLM["GPT-4o\nchat_stream() / chat()\n產生回答"]
+      REPLY["回傳給用戶"]
+      QUERY --> EMBED_Q --> SEARCH --> CONTEXT --> LLM --> REPLY
+    end
+
+    UPSERT -.->|向量索引| SEARCH
+
+    style 知識庫建立 fill:#1a3a2a,stroke:#22c55e
+    style 即時問答 fill:#1e3a5f,stroke:#3b82f6
+  </div>
+</div>
+
+<!-- 5. 客服切換流程 -->
+<div class="section">
+  <h2>5. Bot ↔ 真人客服切換流程</h2>
+  <div class="mermaid">
+sequenceDiagram
+    participant C as 👤 客戶
+    participant B as 🤖 Bot
+    participant D as 🖥️ 儀表板
+    participant A as 👨‍💼 客服人員
+
+    C->>B: 傳送訊息
+    B->>D: 廣播 new_message
+    B->>C: AI 自動回覆（bot 模式）
+
+    Note over D,A: 客服人員察覺需介入
+
+    A->>D: 點擊「切換為人工」
+    D->>B: POST /api/conversations/{id}/mode\n{ mode: "agent" }
+    B->>D: 廣播 mode_changed
+
+    C->>B: 再次傳送訊息
+    B->>D: 廣播 new_message（⚠️ 跳過 Bot 處理）
+    Note over B: 模式=agent\n不呼叫 LLM
+
+    A->>D: 輸入回覆內容
+    D->>B: POST /api/conversations/{id}/reply
+    B->>D: 廣播 new_message（客服回覆）
+    B->>C: WebSocket 推送客服回覆
+
+    Note over A,D: 問題解決
+
+    A->>D: 點擊「結案」
+    D->>B: POST /api/conversations/{id}/resolve
+    B->>D: 廣播狀態更新（resolved）
+  </div>
+</div>
+
+<!-- 6. 管理後台資料流 -->
+<div class="section">
+  <h2>6. 管理後台 & 知識庫資料流</h2>
+  <div class="mermaid">
+flowchart TD
+    ADMIN_UI["🖥️ Admin Panel\n(admin/index.html)"]
+
+    subgraph 知識庫管理
+      UPLOAD["POST /api/admin/files\n上傳 .xlsx/.txt/.md/.pdf"]
+      LIST_FILES["GET /api/admin/files\n列出知識庫檔案"]
+      DELETE_FILE["DELETE /api/admin/files/{name}\n刪除檔案"]
+      INGEST_API["POST /api/admin/ingest\n執行匯入流程"]
+      SYNC["POST /api/admin/items/sync\n同步至 Qdrant"]
+      TEMPLATE["GET /api/admin/template\n下載範本 (xlsx/csv/txt/pdf)"]
+    end
+
+    subgraph 知識條目管理
+      KI_LIST["GET /api/admin/items\n列出所有條目"]
+      KI_CREATE["POST /api/admin/items\n新增條目"]
+      KI_UPDATE["PATCH /api/admin/items/{id}\n更新條目"]
+      KI_DELETE["DELETE /api/admin/items/{id}\n刪除條目"]
+      KI_IMPORT["POST /api/admin/items/import\n批次從 Excel 匯入"]
+    end
+
+    subgraph 設定
+      SETTINGS["POST /api/admin/settings\n更新店家名稱等設定"]
+    end
+
+    ADMIN_UI --> UPLOAD --> DB_FILES["data/ 目錄"]
+    ADMIN_UI --> LIST_FILES
+    ADMIN_UI --> DELETE_FILE
+    ADMIN_UI --> INGEST_API --> INGEST_PY["ingest.py 解析 → Qdrant"]
+    ADMIN_UI --> SYNC --> QDRANT_DB["Qdrant 向量資料庫"]
+    ADMIN_UI --> TEMPLATE
+
+    ADMIN_UI --> KI_LIST
+    ADMIN_UI --> KI_CREATE --> SQLITE["SQLite knowledgeitem"]
+    ADMIN_UI --> KI_UPDATE --> SQLITE
+    ADMIN_UI --> KI_DELETE --> SQLITE
+    ADMIN_UI --> KI_IMPORT --> SQLITE
+
+    ADMIN_UI --> SETTINGS --> CONFIG["config.py / .env"]
+
+    style ADMIN_UI fill:#4c1d95,stroke:#a855f7,color:#fff
+    style QDRANT_DB fill:#713f12,stroke:#f59e0b,color:#fff
+    style SQLITE fill:#166534,stroke:#22c55e,color:#fff
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1e3a5f',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b',
+      secondaryColor: '#1a3a2a',
+      tertiaryColor: '#2a1a3a',
+      background: '#0f172a',
+      mainBkg: '#1e293b',
+      nodeBorder: '#475569',
+      clusterBkg: '#1e293b',
+      titleColor: '#7dd3fc',
+      edgeLabelBackground: '#1e293b',
+      actorBkg: '#1e293b',
+      actorBorder: '#3b82f6',
+      actorTextColor: '#e2e8f0',
+      signalColor: '#64748b',
+      signalTextColor: '#e2e8f0',
+      labelBoxBkgColor: '#1e293b',
+      labelBoxBorderColor: '#475569',
+      labelTextColor: '#e2e8f0',
+      loopTextColor: '#e2e8f0',
+      noteBorderColor: '#475569',
+      noteBkgColor: '#334155',
+      noteTextColor: '#e2e8f0',
+      activationBorderColor: '#3b82f6',
+      activationBkgColor: '#1e3a5f',
+      sequenceNumberColor: '#0f172a'
+    },
+    flowchart: {
+      curve: 'basis',
+      padding: 20
+    },
+    sequence: {
+      diagramMarginX: 20,
+      diagramMarginY: 20,
+      actorMargin: 80,
+      width: 160,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35
+    }
+  });
+</script>
+</body>
+</html>

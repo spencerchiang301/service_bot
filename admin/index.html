@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>管理後台</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f8fafc;display:flex;height:100vh;overflow:hidden;color:#1e293b;}
+
+    /* ── Sidebar ── */
+    .sidebar{width:220px;min-width:220px;background:#1e293b;display:flex;flex-direction:column;height:100vh;}
+    .sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid #334155;}
+    .sidebar-logo h1{font-size:15px;font-weight:700;color:#f1f5f9;}
+    .sidebar-logo span{font-size:11px;color:#64748b;display:block;margin-top:2px;}
+    .nav{flex:1;padding:12px 10px;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:#94a3b8;font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px;}
+    .nav-item:hover{background:#334155;color:#f1f5f9;}
+    .nav-item.active{background:#6366f1;color:#fff;}
+    .nav-item .icon{font-size:16px;width:20px;text-align:center;}
+    .sidebar-footer{padding:14px 10px;border-top:1px solid #334155;}
+    .back-link{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;color:#64748b;font-size:13px;text-decoration:none;transition:all .15s;}
+    .back-link:hover{background:#334155;color:#94a3b8;}
+
+    /* ── Main ── */
+    .main{flex:1;overflow-y:auto;padding:28px 32px;}
+    .main::-webkit-scrollbar{width:5px;}.main::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px;}
+    .page{display:none;}.page.active{display:block;}
+    .page-title{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:6px;}
+    .page-sub{font-size:13px;color:#64748b;margin-bottom:24px;}
+
+    /* ── Cards ── */
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;}
+    .card-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+    .card-title .badge{background:#eff6ff;color:#2563eb;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:500;}
+
+    /* ── Stats ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+    .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;}
+    .stat-num{font-size:28px;font-weight:700;color:#1e293b;}
+    .stat-label{font-size:12px;color:#64748b;margin-top:4px;}
+    .stat-card.blue .stat-num{color:#2563eb;}
+    .stat-card.green .stat-num{color:#16a34a;}
+    .stat-card.purple .stat-num{color:#7c3aed;}
+
+    /* ── File list ── */
+    .file-list{display:flex;flex-direction:column;gap:8px;}
+    .file-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;}
+    .file-icon{font-size:20px;width:28px;text-align:center;flex-shrink:0;}
+    .file-info{flex:1;min-width:0;}
+    .file-name{font-size:13px;font-weight:500;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .file-meta{font-size:11px;color:#94a3b8;margin-top:2px;}
+    .file-actions{display:flex;gap:6px;flex-shrink:0;}
+    .btn-del{padding:5px 10px;background:#fff;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;font-size:12px;cursor:pointer;transition:all .15s;}
+    .btn-del:hover{background:#fef2f2;}
+    .empty-files{text-align:center;padding:32px;color:#94a3b8;font-size:13px;}
+
+    /* ── Upload zone ── */
+    .upload-zone{border:2px dashed #e2e8f0;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;}
+    .upload-zone:hover,.upload-zone.drag{border-color:#6366f1;background:#f5f3ff;}
+    .upload-zone .uz-icon{font-size:32px;margin-bottom:8px;}
+    .upload-zone p{font-size:13px;color:#64748b;}
+    .upload-zone strong{color:#6366f1;}
+    #upload-input{display:none;}
+
+    /* ── Buttons ── */
+    .btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+    .btn-primary{background:#6366f1;color:#fff;}.btn-primary:hover{background:#4f46e5;}
+    .btn-secondary{background:#fff;color:#64748b;border:1px solid #e2e8f0;}.btn-secondary:hover{background:#f8fafc;}
+    .btn-danger{background:#ef4444;color:#fff;}.btn-danger:hover{background:#dc2626;}
+    .btn:disabled{opacity:.5;cursor:default;}
+    .btn-row{display:flex;gap:8px;align-items:center;margin-top:16px;}
+
+    /* ── Form ── */
+    .form-group{margin-bottom:16px;}
+    .form-label{font-size:13px;font-weight:500;color:#374151;margin-bottom:6px;display:block;}
+    .form-input{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;}
+    .form-input:focus{border-color:#6366f1;}
+    .form-hint{font-size:11px;color:#94a3b8;margin-top:4px;}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;z-index:999;}
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{background:#16a34a;}
+    .toast.error{background:#dc2626;}
+
+    /* ── Data table ── */
+    .dtab{padding:9px 18px;font-size:13px;font-weight:500;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+    .dtab:hover{color:#6366f1;}
+    .dtab.active{color:#6366f1;border-bottom-color:#6366f1;}
+    .tbl-wrap{overflow-x:auto;}
+    table.dtbl{width:100%;border-collapse:collapse;font-size:13px;}
+    table.dtbl th{background:#f8fafc;color:#64748b;font-weight:600;padding:9px 12px;border-bottom:2px solid #e2e8f0;text-align:left;white-space:nowrap;}
+    table.dtbl td{padding:0;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+    table.dtbl tr:hover td{background:#fafbff;}
+    table.dtbl td.cell-edit{padding:0;}
+    .cell-input{width:100%;padding:8px 12px;border:none;background:transparent;font-size:13px;font-family:inherit;outline:none;color:#1e293b;}
+    .cell-input:focus{background:#eff6ff;}
+    .cell-req{border-left:3px solid #6366f1;}
+    td.del-col{width:36px;padding:4px 8px;text-align:center;}
+    .del-btn{background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px;}
+    .del-btn:hover{color:#ef4444;background:#fef2f2;}
+    .add-row-btn{display:flex;align-items:center;gap:6px;padding:10px 12px;color:#6366f1;font-size:13px;cursor:pointer;border-top:1px dashed #e2e8f0;transition:background .15s;}
+    .add-row-btn:hover{background:#f5f3ff;}
+    .src-badge{font-size:10px;padding:1px 6px;border-radius:999px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
+    .src-badge.manual{background:#f0fdf4;color:#16a34a;}
+    .src-badge.file{background:#eff6ff;color:#2563eb;}
+    /* ── Knowledge status ── */
+    .kb-summary{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .kb-total{font-size:13px;font-weight:600;color:#1e293b;}
+    .kb-total span{color:#6366f1;}
+    .kb-empty{text-align:center;padding:24px;color:#94a3b8;font-size:13px;}
+    .source-list{display:flex;flex-direction:column;gap:6px;}
+    .source-item{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;}
+    .source-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;cursor:pointer;user-select:none;}
+    .source-header:hover{background:#f1f5f9;}
+    .source-name{font-size:13px;font-weight:500;color:#1e293b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .source-count{font-size:11px;background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:999px;font-weight:600;flex-shrink:0;}
+    .source-arrow{font-size:11px;color:#94a3b8;flex-shrink:0;transition:transform .2s;}
+    .source-item.open .source-arrow{transform:rotate(180deg);}
+    .source-preview{display:none;padding:12px 14px;font-size:12px;color:#64748b;line-height:1.6;background:#fff;border-top:1px solid #f1f5f9;white-space:pre-wrap;word-break:break-all;}
+    .source-item.open .source-preview{display:block;}
+    /* ── Dropdown ── */
+    .dropdown{position:relative;display:inline-block;}
+    .dropdown-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);min-width:180px;z-index:100;overflow:hidden;}
+    .dropdown-menu.open{display:block;}
+    .dropdown-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:#374151;cursor:pointer;transition:background .1s;}
+    .dropdown-item:hover{background:#f5f3ff;color:#6366f1;}
+    .dropdown-item .fmt-icon{font-size:16px;width:20px;text-align:center;}
+    /* ── Ingest status ── */
+    .ingest-status{font-size:12px;color:#64748b;margin-left:8px;}
+    .ingest-status.running{color:#f59e0b;}
+    .ingest-status.done{color:#16a34a;}
+    /* ── Orders ── */
+    .order-filter-tabs{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px;flex-wrap:wrap;}
+    .otab{padding:8px 16px;font-size:13px;font-weight:500;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
+    .otab:hover{color:#6366f1;}.otab.active{color:#6366f1;border-bottom-color:#6366f1;}
+    .order-search{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:14px;transition:border-color .2s;}
+    .order-search:focus{border-color:#6366f1;}
+    .order-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .order-table th{background:#f8fafc;color:#64748b;font-weight:600;padding:9px 12px;border-bottom:2px solid #e2e8f0;text-align:left;white-space:nowrap;}
+    .order-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+    .order-table tr:hover td{background:#fafbff;cursor:pointer;}
+    .ostatus{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap;}
+    .ostatus.pending{background:#fef9c3;color:#854d0e;}
+    .ostatus.confirmed{background:#dcfce7;color:#166534;}
+    .ostatus.completed{background:#e0f2fe;color:#075985;}
+    .ostatus.cancelled{background:#fee2e2;color:#991b1b;}
+    .opay{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;}
+    .opay.unpaid{background:#fff7ed;color:#c2410c;}.opay.paid{background:#f0fdf4;color:#166534;}
+    .tag-chip{display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:500;margin:2px;}
+    .tag-chip .tag-x{cursor:pointer;opacity:.6;font-size:12px;line-height:1;}.tag-chip .tag-x:hover{opacity:1;}
+    .order-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;}
+    .order-detail-overlay.open{display:flex;}
+    .order-detail-modal{background:#fff;border-radius:16px;width:560px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+    .odm-header{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;}
+    .odm-title{font-size:17px;font-weight:700;color:#1e293b;}
+    .odm-close{font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;padding:4px;}.odm-close:hover{color:#1e293b;}
+    .odm-body{padding:16px 24px 24px;}
+    .odm-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+    .odm-section-title{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+    .odm-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
+    .odm-row .lbl{color:#64748b;}.odm-row .val{font-weight:500;}
+    .odm-items-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .odm-items-table th{text-align:left;color:#64748b;font-size:11px;font-weight:600;padding:3px 6px;border-bottom:1px solid #e2e8f0;}
+    .odm-items-table td{padding:5px 6px;border-bottom:1px solid #f1f5f9;}
+    .odm-total{text-align:right;font-size:14px;font-weight:700;color:#6366f1;margin-top:6px;}
+    .tag-input-row{display:flex;gap:6px;margin-top:8px;}
+    .tag-input{flex:1;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;}
+    .tag-input:focus{border-color:#6366f1;}
+    .odm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+    /* ── Reimport banner ── */
+    .reimport-banner{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:16px;font-size:13px;color:#92400e;}
+    .reimport-banner .rbanner-icon{font-size:20px;flex-shrink:0;}
+    .reimport-banner .rbanner-text{flex:1;}
+    .reimport-banner .rbanner-text strong{display:block;margin-bottom:2px;color:#78350f;}
+    .reimport-banner .rbanner-files{font-size:11px;color:#b45309;margin-top:3px;}
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h1>⚙️ 管理後台</h1>
+    <span id="biz-name-display">載入中...</span>
+  </div>
+  <nav class="nav">
+    <div class="nav-item active" onclick="showPage('overview',this)">
+      <span class="icon">📊</span>總覽
+    </div>
+    <div class="nav-item" onclick="showPage('knowledge',this)">
+      <span class="icon">📚</span>知識庫
+    </div>
+    <div class="nav-item" onclick="showPage('data',this)">
+      <span class="icon">🗂️</span>資料管理
+    </div>
+    <div class="nav-item" onclick="showPage('orders',this)">
+      <span class="icon">📦</span>訂單管理
+    </div>
+    <div class="nav-item" onclick="showPage('settings',this)">
+      <span class="icon">🔧</span>商店設定
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/dashboard" class="back-link">
+      <span>💬</span>返回客服後台
+    </a>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ── 總覽 ── -->
+  <div class="page active" id="page-overview">
+    <div class="page-title">總覽</div>
+    <div class="page-sub">今日服務狀況一覽</div>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-num" id="stat-open">—</div>
+        <div class="stat-label">進行中對話</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num" id="stat-resolved">—</div>
+        <div class="stat-label">今日已解決</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-num" id="stat-files">—</div>
+        <div class="stat-label">知識庫文件數</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">快速操作</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="showPage('knowledge', document.querySelector('.nav-item:nth-child(2)'))">📚 管理知識庫</button>
+        <button class="btn btn-secondary" onclick="showPage('settings', document.querySelector('.nav-item:nth-child(3)'))">🔧 商店設定</button>
+        <a href="/dashboard" style="text-decoration:none"><button class="btn btn-secondary">💬 前往客服後台</button></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 知識庫 ── -->
+  <div class="page" id="page-knowledge">
+    <div class="page-title">知識庫管理</div>
+    <div class="page-sub">上傳商品、服務資料，Bot 會自動從這裡回答客戶問題</div>
+
+    <div class="card">
+      <div class="card-title">下載資料填寫範本</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">
+        先下載範本，填入您的商品與服務資料，再上傳到下方的知識庫
+      </p>
+      <div class="dropdown" id="tmpl-dropdown">
+        <button class="btn btn-primary" onclick="toggleDropdown()">
+          📥 下載範本 ▾
+        </button>
+        <div class="dropdown-menu" id="tmpl-menu">
+          <div class="dropdown-item" onclick="downloadTemplate('xlsx')">
+            <span class="fmt-icon">📊</span>Excel (.xlsx) <span style="font-size:11px;color:#94a3b8;margin-left:auto">推薦</span>
+          </div>
+          <div class="dropdown-item" onclick="downloadTemplate('csv')">
+            <span class="fmt-icon">📋</span>CSV (.csv)
+          </div>
+          <div class="dropdown-item" onclick="downloadTemplate('txt')">
+            <span class="fmt-icon">📝</span>純文字 (.txt)
+          </div>
+          <div class="dropdown-item" onclick="downloadTemplate('pdf')">
+            <span class="fmt-icon">📄</span>PDF (.pdf)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">上傳資料檔案 <span class="badge">支援 .xlsx .pdf .txt .md</span></div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('upload-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="handleDrop(event)">
+        <div class="uz-icon">📂</div>
+        <p><strong>點擊選擇檔案</strong>，或拖曳至此</p>
+        <p style="margin-top:4px;font-size:11px;color:#94a3b8">Excel / CSV 上傳後會自動同步到「資料管理」頁面</p>
+      </div>
+      <input type="file" id="upload-input" accept=".xlsx,.pdf,.txt,.md" multiple onchange="uploadFiles(this.files)"/>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>✅ 已載入知識庫內容</span>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="loadKnowledge()">重新整理</button>
+      </div>
+      <div id="kb-status"><div class="kb-empty">載入中...</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">目前資料檔案</div>
+      <div class="file-list" id="file-list">
+        <div class="empty-files">載入中...</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="runIngest(false)" id="ingest-btn">
+          ⚡ 重新建立索引
+        </button>
+        <button class="btn btn-danger" onclick="runIngest(true)" id="reset-btn">
+          🗑️ 清空並重建
+        </button>
+        <span class="ingest-status" id="ingest-status"></span>
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:10px">
+        上傳或刪除檔案後，需點擊「重新建立索引」才會更新 Bot 的知識庫
+      </p>
+    </div>
+  </div>
+
+  <!-- ── 資料管理 ── -->
+  <div class="page" id="page-data">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div>
+        <div class="page-title">資料管理</div>
+        <div class="page-sub" style="margin-bottom:0">直接新增、編輯、刪除商品與服務資料</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="btn btn-secondary" style="cursor:pointer">
+          📥 從 Excel 匯入
+          <input type="file" accept=".xlsx" style="display:none" onchange="importExcel(this)"/>
+        </label>
+        <button class="btn btn-primary" onclick="syncToQdrant()" id="sync-btn">
+          🔄 同步到知識庫
+        </button>
+        <span id="sync-status" style="font-size:12px;color:#64748b"></span>
+      </div>
+    </div>
+
+    <!-- 分類 tabs -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px">
+      <div class="dtab active" onclick="switchCat('product',this)">🛍️ 商品</div>
+      <div class="dtab" onclick="switchCat('service',this)">🔧 服務</div>
+      <div class="dtab" onclick="switchCat('info',this)">ℹ️ 基本資訊</div>
+    </div>
+
+    <!-- 匯入提示 banner (有已上傳檔案但表格空時顯示) -->
+    <div id="reimport-banner" style="display:none"></div>
+
+    <!-- 表格 -->
+    <div id="data-table-wrap"></div>
+  </div>
+
+  <!-- ── 訂單管理 ── -->
+  <div class="page" id="page-orders">
+    <div class="page-title">訂單管理</div>
+    <div class="page-sub">查看所有訂單，可加標籤標記取消原因</div>
+
+    <div class="card">
+      <input class="order-search" id="order-search" placeholder="搜尋訂單編號、姓名、電話…" oninput="filterOrders()"/>
+      <div class="order-filter-tabs">
+        <div class="otab active" onclick="setOrderFilter('',this)">全部</div>
+        <div class="otab" onclick="setOrderFilter('pending',this)">待確認</div>
+        <div class="otab" onclick="setOrderFilter('confirmed',this)">已確認</div>
+        <div class="otab" onclick="setOrderFilter('completed',this)">已完成</div>
+        <div class="otab" onclick="setOrderFilter('cancelled',this)">已取消</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="order-table" id="order-table">
+          <thead><tr>
+            <th>訂單編號</th><th>客戶</th><th>電話</th><th>品項</th>
+            <th>金額</th><th>狀態</th><th>付款</th><th>標籤</th><th>時間</th>
+          </tr></thead>
+          <tbody id="order-tbody"></tbody>
+        </table>
+        <div id="order-empty" style="display:none;text-align:center;padding:32px;color:#94a3b8;font-size:13px">尚無訂單</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 訂單詳情 Modal ── -->
+  <div class="order-detail-overlay" id="order-modal" onclick="closeOrderModal(event)">
+    <div class="order-detail-modal" id="order-modal-content"></div>
+  </div>
+
+  <!-- ── 設定 ── -->
+  <div class="page" id="page-settings">
+    <div class="page-title">商店設定</div>
+    <div class="page-sub">設定顯示在客服介面上的商店資訊</div>
+
+    <div class="card">
+      <div class="card-title">基本設定</div>
+      <div class="form-group">
+        <label class="form-label">商店名稱</label>
+        <input class="form-input" id="input-biz-name" type="text" placeholder="例如：小花咖啡"/>
+        <div class="form-hint">會顯示在客戶聊天視窗的標題</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveSettings()">儲存設定</button>
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:10px">
+        ⚠️ 儲存後需重新整理客戶頁面才會生效
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">連結</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div>🌐 客服介面：<a href="/" target="_blank" style="color:#6366f1">/</a></div>
+        <div>💬 客服後台：<a href="/dashboard" target="_blank" style="color:#6366f1">/dashboard</a></div>
+        <div>⚙️ 管理後台：<a href="/admin" target="_blank" style="color:#6366f1">/admin</a></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Navigation ────────────────────────────────────────────────────────────
+  function showPage(name, navEl) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    if (navEl) navEl.classList.add('active');
+    if (name === 'knowledge') { loadFiles(); loadKnowledge(); }
+    if (name === 'data') loadDataTable();
+    if (name === 'settings') loadSettings();
+    if (name === 'overview') loadStats();
+    if (name === 'orders') loadOrders();
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg, type='') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  async function loadStats() {
+    const [convRes, filesRes] = await Promise.all([
+      fetch('/api/conversations?status=open'),
+      fetch('/api/admin/files'),
+    ]);
+    const convs = await convRes.json();
+    const files = await filesRes.json();
+    document.getElementById('stat-open').textContent = convs.length;
+    document.getElementById('stat-files').textContent = files.length;
+
+    const resolvedRes = await fetch('/api/conversations?status=resolved');
+    const resolved = await resolvedRes.json();
+    document.getElementById('stat-resolved').textContent = resolved.length;
+  }
+
+  // ── Data table ───────────────────────────────────────────────────────────
+  const CAT_SCHEMA = {
+    product: {
+      label: '商品',
+      cols: [
+        {key:'col1', label:'商品名稱', required:true, placeholder:'例：拿鐵', width:'22%'},
+        {key:'col2', label:'規格／尺寸', placeholder:'例：大杯', width:'16%'},
+        {key:'col3', label:'價格（元）', placeholder:'例：110', width:'14%'},
+        {key:'col4', label:'備註', placeholder:'例：可選燕麥奶', width:''},
+      ]
+    },
+    service: {
+      label: '服務',
+      cols: [
+        {key:'col1', label:'服務名稱', required:true, placeholder:'例：外送服務', width:'18%'},
+        {key:'col2', label:'說明', required:true, placeholder:'例：訂單滿300元免運費', width:''},
+        {key:'col3', label:'費用', placeholder:'例：50元', width:'14%'},
+        {key:'col4', label:'備註', placeholder:'例：僅限3公里內', width:'18%'},
+      ]
+    },
+    info: {
+      label: '基本資訊',
+      cols: [
+        {key:'col1', label:'項目', required:true, placeholder:'例：營業時間', width:'25%'},
+        {key:'col2', label:'內容', required:true, placeholder:'例：週一至週五 09:00-21:00', width:''},
+        {key:'col3', label:'', placeholder:'', width:'0', hidden:true},
+        {key:'col4', label:'', placeholder:'', width:'0', hidden:true},
+      ]
+    },
+  };
+
+  let currentCat = 'product';
+  let tableData = [];
+
+  function switchCat(cat, el) {
+    currentCat = cat;
+    document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    loadDataTable();
+  }
+
+  async function loadDataTable() {
+    const res = await fetch(`/api/admin/items?category=${currentCat}`);
+    tableData = await res.json();
+    renderTable();
+
+    // 如果所有類型都沒有資料，檢查是否有未匯入的 xlsx/csv 檔案
+    const banner = document.getElementById('reimport-banner');
+    banner.style.display = 'none';
+    if (tableData.length === 0) {
+      const filesRes = await fetch('/api/admin/files');
+      const files = await filesRes.json();
+      const importable = files.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.csv'));
+      if (importable.length > 0) {
+        const names = importable.map(f => f.name).join('、');
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+          <div class="reimport-banner">
+            <div class="rbanner-icon">⚠️</div>
+            <div class="rbanner-text">
+              <strong>偵測到已上傳的資料檔案，但資料管理頁面是空的</strong>
+              點擊右側按鈕將檔案資料匯入到表格，即可查看與編輯所有資料
+              <div class="rbanner-files">檔案：${esc(names)}</div>
+            </div>
+            <button class="btn btn-primary" onclick="reimportFiles()" id="reimport-btn">
+              📥 從已上傳檔案匯入
+            </button>
+          </div>`;
+      }
+    }
+  }
+
+  async function reimportFiles() {
+    const btn = document.getElementById('reimport-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 匯入中...';
+    const res = await fetch('/api/admin/files/reimport', {method: 'POST'});
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      const detail = data.files.map(f => `${f.name}(${f.count}筆)`).join('、');
+      toast(`✅ 共匯入 ${data.total} 筆資料：${detail}`, 'success');
+      document.getElementById('reimport-banner').style.display = 'none';
+      loadDataTable();
+    } else {
+      toast('❌ 匯入失敗，請稍後再試', 'error');
+      btn.disabled = false;
+      btn.textContent = '📥 從已上傳檔案匯入';
+    }
+  }
+
+  function renderTable() {
+    const schema = CAT_SCHEMA[currentCat];
+    const visibleCols = schema.cols.filter(c => !c.hidden);
+    const wrap = document.getElementById('data-table-wrap');
+    const total = tableData.length;
+
+    wrap.innerHTML = `
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px">共 <strong>${total}</strong> 筆資料</div>
+      <div class="tbl-wrap">
+        <table class="dtbl">
+          <thead><tr>
+            ${visibleCols.map(c => `<th style="width:${c.width}">${c.label}${c.required ? ' <span style="color:#6366f1">*</span>' : ''}</th>`).join('')}
+            <th style="width:80px">來源</th>
+            <th style="width:36px"></th>
+          </tr></thead>
+          <tbody id="tbl-body">
+            ${tableData.map(row => rowHTML(row, visibleCols)).join('')}
+          </tbody>
+        </table>
+        <div class="add-row-btn" onclick="addRow()">＋ 新增一列</div>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:8px">
+        💡 點擊任一欄位直接編輯，離開欄位自動儲存 ·
+        <span style="background:#f0fdf4;color:#16a34a;padding:1px 6px;border-radius:999px">手動</span> 自行新增 ·
+        <span style="background:#eff6ff;color:#2563eb;padding:1px 6px;border-radius:999px">檔案名</span> 從檔案匯入
+      </div>`;
+  }
+
+  function rowHTML(row, cols) {
+    const isManual = !row.source || row.source === 'manual';
+    const srcLabel = isManual ? '手動' : row.source.replace(/^.*[\\/]/, '').substring(0, 12);
+    const srcClass = isManual ? 'manual' : 'file';
+    return `<tr id="row-${row.id}">
+      ${cols.map(c => `
+        <td class="cell-edit ${c.required ? 'cell-req' : ''}">
+          <input class="cell-input" value="${esc(row[c.key])}" placeholder="${c.placeholder}"
+            onblur="saveCell(${row.id},'${c.key}',this.value)"
+            onkeydown="cellKeydown(event,${row.id},'${c.key}')"/>
+        </td>`).join('')}
+      <td style="padding:4px 8px"><span class="src-badge ${srcClass}" title="${esc(row.source)}">${esc(srcLabel)}</span></td>
+      <td class="del-col"><button class="del-btn" onclick="deleteRow(${row.id})" title="刪除">✕</button></td>
+    </tr>`;
+  }
+
+  async function saveCell(id, key, value) {
+    const row = tableData.find(r => r.id === id);
+    if (!row || row[key] === value) return;
+    row[key] = value;
+    await fetch(`/api/admin/items/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({[key]: value}),
+    });
+  }
+
+  function cellKeydown(e, id, key) {
+    if (e.key === 'Enter') e.target.blur();
+    if (e.key === 'Escape') { e.target.value = tableData.find(r=>r.id===id)?.[key]||''; e.target.blur(); }
+  }
+
+  async function addRow() {
+    const res = await fetch('/api/admin/items', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({category: currentCat}),
+    });
+    const newRow = await res.json();
+    tableData.push(newRow);
+    const schema = CAT_SCHEMA[currentCat];
+    const visibleCols = schema.cols.filter(c => !c.hidden);
+    const tbody = document.getElementById('tbl-body');
+    tbody.insertAdjacentHTML('beforeend', rowHTML(newRow, visibleCols));
+    // focus first cell of new row
+    const newTr = document.getElementById(`row-${newRow.id}`);
+    newTr?.querySelector('.cell-input')?.focus();
+    newTr?.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  async function deleteRow(id) {
+    if (!confirm('確定刪除這列資料？')) return;
+    await fetch(`/api/admin/items/${id}`, {method: 'DELETE'});
+    tableData = tableData.filter(r => r.id !== id);
+    document.getElementById(`row-${id}`)?.remove();
+  }
+
+  async function syncToQdrant() {
+    const btn = document.getElementById('sync-btn');
+    const status = document.getElementById('sync-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ 同步中...';
+    status.textContent = '';
+    const res = await fetch('/api/admin/items/sync', {method: 'POST'});
+    btn.disabled = false;
+    btn.textContent = '🔄 同步到知識庫';
+    if (res.ok) {
+      const data = await res.json();
+      status.textContent = `✅ 已同步 ${data.count} 筆（${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}）`;
+      status.style.color = '#16a34a';
+      toast(`✅ 知識庫已同步，共 ${data.count} 筆`, 'success');
+      loadKnowledge();
+    } else {
+      status.textContent = '❌ 同步失敗';
+      status.style.color = '#ef4444';
+      toast('❌ 同步失敗，請稍後再試', 'error');
+    }
+  }
+
+  async function importExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/admin/items/import', {method:'POST', body: form});
+    const data = await res.json();
+    if (res.ok) {
+      toast(`✅ 匯入 ${data.count} 筆資料`, 'success');
+      loadDataTable();
+    } else {
+      toast(`❌ 匯入失敗：${data.detail}`, 'error');
+    }
+  }
+
+  // ── Knowledge status ──────────────────────────────────────────────────────
+  async function loadKnowledge() {
+    const container = document.getElementById('kb-status');
+    container.innerHTML = '<div class="kb-empty">載入中...</div>';
+    const res = await fetch('/api/admin/knowledge');
+    const data = await res.json();
+
+    if (data.error) {
+      container.innerHTML = `<div class="kb-empty" style="color:#ef4444">⚠️ 無法連接知識庫：${esc(data.error)}</div>`;
+      return;
+    }
+    if (data.total === 0) {
+      container.innerHTML = '<div class="kb-empty">知識庫是空的，請上傳資料後按「重新建立索引」</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="kb-summary">
+        <div class="kb-total">共 <span>${data.total}</span> 筆資料，來自 <span>${data.sources.length}</span> 個來源</div>
+      </div>
+      <div class="source-list">
+        ${data.sources.map((s, i) => `
+          <div class="source-item" id="src-${i}">
+            <div class="source-header" onclick="toggleSource(${i})">
+              <span style="font-size:16px">${srcIcon(s.source)}</span>
+              <span class="source-name">${esc(s.source)}</span>
+              <span class="source-count">${s.chunks} 筆</span>
+              <span class="source-arrow">▼</span>
+            </div>
+            <div class="source-preview">${esc(s.preview)}${s.chunks > 1 ? '\n\n…（共 ' + s.chunks + ' 筆，此為第一筆預覽）' : ''}</div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function toggleSource(i) {
+    document.getElementById(`src-${i}`).classList.toggle('open');
+  }
+
+  function srcIcon(name) {
+    if (name.endsWith('.xlsx')) return '📊';
+    if (name.endsWith('.pdf'))  return '📄';
+    if (name.endsWith('.csv'))  return '📋';
+    if (name.endsWith('.md') || name.endsWith('.txt')) return '📝';
+    if (name.includes('>')) return '📂';
+    return '📁';
+  }
+
+  // ── Template download ─────────────────────────────────────────────────────
+  function toggleDropdown() {
+    document.getElementById('tmpl-menu').classList.toggle('open');
+  }
+
+  function downloadTemplate(fmt) {
+    document.getElementById('tmpl-menu').classList.remove('open');
+    window.location.href = `/api/admin/template?format=${fmt}`;
+  }
+
+  // 點其他地方關閉 dropdown
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('tmpl-dropdown').contains(e.target)) {
+      document.getElementById('tmpl-menu').classList.remove('open');
+    }
+  });
+
+  // ── Files ─────────────────────────────────────────────────────────────────
+  const FILE_ICONS = {'.xlsx':'📊', '.pdf':'📄', '.txt':'📝', '.md':'📝'};
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1048576).toFixed(1) + ' MB';
+  }
+
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleString('zh-TW', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+
+  async function loadFiles() {
+    const res = await fetch('/api/admin/files');
+    const files = await res.json();
+    const list = document.getElementById('file-list');
+    if (!files.length) {
+      list.innerHTML = '<div class="empty-files">尚無資料檔案，請上傳</div>';
+      return;
+    }
+    list.innerHTML = files.map(f => {
+      const ext = f.name.lastIndexOf('.') >= 0 ? f.name.slice(f.name.lastIndexOf('.')) : '';
+      const icon = FILE_ICONS[ext] || '📄';
+      return `<div class="file-item">
+        <div class="file-icon">${icon}</div>
+        <div class="file-info">
+          <div class="file-name">${esc(f.name)}</div>
+          <div class="file-meta">${fmtSize(f.size)} · 修改於 ${fmtDate(f.modified)}</div>
+        </div>
+        <div class="file-actions">
+          <button class="btn-del" onclick="deleteFile('${esc(f.name)}')">刪除</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function uploadFiles(fileList) {
+    for (const file of fileList) {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/files', {method:'POST', body: form});
+      if (res.ok) {
+        const data = await res.json();
+        if (data.imported > 0) {
+          toast(`✅ ${file.name} 上傳成功，已匯入 ${data.imported} 筆到資料管理`, 'success');
+        } else {
+          toast(`✅ ${file.name} 上傳成功`, 'success');
+        }
+      } else {
+        const err = await res.json();
+        toast(`❌ ${file.name}：${err.detail}`, 'error');
+      }
+    }
+    loadFiles();
+    loadKnowledge();
+    document.getElementById('upload-input').value = '';
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('drag');
+    uploadFiles(e.dataTransfer.files);
+  }
+
+  async function deleteFile(name) {
+    if (!confirm(`確定刪除 ${name}？`)) return;
+    await fetch(`/api/admin/files/${encodeURIComponent(name)}`, {method:'DELETE'});
+    toast(`🗑️ ${name} 已刪除`);
+    loadFiles();
+  }
+
+  async function runIngest(reset) {
+    const label = reset ? '清空並重建' : '重新建立索引';
+    if (reset && !confirm('確定清空所有知識庫並重新匯入？')) return;
+    document.getElementById('ingest-btn').disabled = true;
+    document.getElementById('reset-btn').disabled = true;
+    const status = document.getElementById('ingest-status');
+    status.textContent = '⏳ 處理中...';
+    status.className = 'ingest-status running';
+
+    const res = await fetch(`/api/admin/ingest?reset=${reset}`, {method:'POST'});
+    if (res.ok) {
+      // 等幾秒讓背景程序跑完
+      setTimeout(() => {
+        status.textContent = '✅ 完成';
+        status.className = 'ingest-status done';
+        document.getElementById('ingest-btn').disabled = false;
+        document.getElementById('reset-btn').disabled = false;
+        toast('知識庫已更新', 'success');
+        loadKnowledge();
+      }, 4000);
+    } else {
+      status.textContent = '❌ 失敗';
+      status.className = 'ingest-status';
+      document.getElementById('ingest-btn').disabled = false;
+      document.getElementById('reset-btn').disabled = false;
+    }
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  async function loadSettings() {
+    const res = await fetch('/api/admin/settings');
+    const data = await res.json();
+    document.getElementById('input-biz-name').value = data.business_name || '';
+  }
+
+  async function saveSettings() {
+    const name = document.getElementById('input-biz-name').value.trim();
+    if (!name) { toast('請填寫商店名稱', 'error'); return; }
+    const res = await fetch('/api/admin/settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({business_name: name})
+    });
+    if (res.ok) {
+      document.getElementById('biz-name-display').textContent = name;
+      toast('✅ 設定已儲存', 'success');
+    }
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Orders ────────────────────────────────────────────────────────────────
+  let allOrders = [];
+  let orderStatusFilter = '';
+  const STATUS_LABELS = {pending:'待確認', confirmed:'已確認', completed:'已完成', cancelled:'已取消'};
+  const PRESET_TAGS = ['客戶電話取消','重複下單','商家主動取消','備貨不足','客戶改期'];
+
+  async function loadOrders() {
+    const res = await fetch('/api/orders');
+    allOrders = await res.json();
+    renderOrders();
+  }
+
+  function setOrderFilter(status, el) {
+    orderStatusFilter = status;
+    document.querySelectorAll('.otab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderOrders();
+  }
+
+  function filterOrders() { renderOrders(); }
+
+  function renderOrders() {
+    const q = document.getElementById('order-search').value.trim().toLowerCase();
+    let rows = allOrders.filter(o => {
+      if (orderStatusFilter && o.status !== orderStatusFilter) return false;
+      if (q && !`${o.order_no} ${o.contact_name} ${o.contact_phone}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const tbody = document.getElementById('order-tbody');
+    const empty = document.getElementById('order-empty');
+    if (!rows.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(o => {
+      const items = o.items.map(i => `${i.name}x${i.qty}`).join('、');
+      const tags = (o.tags||[]).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('');
+      const dt = new Date(o.created_at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<tr onclick="openOrderModal(${o.id})">
+        <td style="font-weight:600;color:#6366f1">${esc(o.order_no)}</td>
+        <td>${esc(o.contact_name)}</td>
+        <td>${esc(o.contact_phone)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(items)}</td>
+        <td style="font-weight:600">$${o.total}</td>
+        <td><span class="ostatus ${o.status}">${STATUS_LABELS[o.status]||o.status}</span></td>
+        <td><span class="opay ${o.payment_status}">${o.payment_status==='paid'?'已付':'未付'}</span></td>
+        <td>${tags||'<span style="color:#cbd5e1;font-size:11px">—</span>'}</td>
+        <td style="color:#94a3b8;font-size:12px;white-space:nowrap">${dt}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function openOrderModal(id) {
+    const o = allOrders.find(x => x.id === id);
+    if (!o) return;
+    renderOrderModal(o);
+    document.getElementById('order-modal').classList.add('open');
+  }
+
+  function closeOrderModal(e) {
+    if (e.target === document.getElementById('order-modal') || e.currentTarget === document.getElementById('order-modal') && e.target.classList.contains('order-detail-overlay')) {
+      document.getElementById('order-modal').classList.remove('open');
+    }
+  }
+
+  function renderOrderModal(o) {
+    const pickup = o.pickup_type === 'delivery' ? '🛵 外送' : '🏪 外帶';
+    const itemRows = o.items.map(it => {
+      const spec = it.spec ? `（${it.spec}）`:'';
+      return `<tr><td>${esc(it.name)}${esc(spec)}</td><td style="text-align:center">${it.qty}</td>
+        <td style="text-align:right">${it.unit_price}</td>
+        <td style="text-align:right;font-weight:600">${it.subtotal||it.unit_price*it.qty}</td></tr>`;
+    }).join('');
+    const tagsHtml = (o.tags||[]).map(t =>
+      `<span class="tag-chip">${esc(t)}<span class="tag-x" onclick="removeTag(${o.id},'${esc(t)}')">✕</span></span>`
+    ).join('');
+    const presetHtml = PRESET_TAGS.filter(t => !(o.tags||[]).includes(t)).map(t =>
+      `<span class="tag-chip" style="cursor:pointer;background:#f8fafc;color:#64748b;border:1px dashed #cbd5e1" onclick="addTag(${o.id},'${t}')">${t}</span>`
+    ).join('');
+
+    document.getElementById('order-modal-content').innerHTML = `
+      <div class="odm-header">
+        <div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px">${esc(o.order_no)} · ${new Date(o.created_at).toLocaleString('zh-TW')}</div>
+          <div class="odm-title">${esc(o.contact_name)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="ostatus ${o.status}" style="font-size:12px;padding:4px 12px">${STATUS_LABELS[o.status]||o.status}</span>
+          <span class="odm-close" onclick="document.getElementById('order-modal').classList.remove('open')">✕</span>
+        </div>
+      </div>
+      <div class="odm-body">
+        <div class="odm-section">
+          <div class="odm-section-title">客戶資訊</div>
+          <div class="odm-row"><span class="lbl">姓名</span><span class="val">${esc(o.contact_name)}</span></div>
+          <div class="odm-row"><span class="lbl">電話</span><span class="val">${esc(o.contact_phone)}</span></div>
+          <div class="odm-row"><span class="lbl">取餐</span><span class="val">${pickup}</span></div>
+          ${o.delivery_address ? `<div class="odm-row"><span class="lbl">地址</span><span class="val">${esc(o.delivery_address)}</span></div>`:''}
+        </div>
+        <div class="odm-section">
+          <div class="odm-section-title">訂單明細</div>
+          <table class="odm-items-table">
+            <thead><tr><th>品項</th><th style="text-align:center">數量</th><th style="text-align:right">單價</th><th style="text-align:right">小計</th></tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+          <div class="odm-total">合計：${o.total} 元</div>
+        </div>
+        <div class="odm-section">
+          <div class="odm-section-title">付款狀態</div>
+          <div class="odm-row">
+            <span class="lbl">付款</span>
+            <span class="val"><span class="opay ${o.payment_status}">${o.payment_status==='paid'?'✅ 已付款':'⏳ 未付款'}</span></span>
+          </div>
+          <div class="odm-actions" style="margin-top:8px">
+            ${o.payment_status==='unpaid'
+              ? `<button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="orderAction(${o.id},{payment_status:'paid'})">✅ 標記已付款</button>`
+              : `<button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="orderAction(${o.id},{payment_status:'unpaid'})">↩ 取消付款</button>`}
+          </div>
+        </div>
+        <div class="odm-section">
+          <div class="odm-section-title">標籤（保留記錄用）</div>
+          <div id="modal-tags">${tagsHtml||'<span style="color:#cbd5e1;font-size:12px">尚無標籤</span>'}</div>
+          <div style="margin-top:8px;font-size:11px;color:#94a3b8;margin-bottom:4px">快速新增：</div>
+          <div id="modal-preset-tags">${presetHtml}</div>
+          <div class="tag-input-row">
+            <input class="tag-input" id="tag-input" placeholder="自訂標籤…" onkeydown="if(event.key==='Enter')addTag(${o.id},this.value)"/>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px" onclick="addTag(${o.id},document.getElementById('tag-input').value)">新增</button>
+          </div>
+        </div>
+        <div class="odm-section">
+          <div class="odm-section-title">訂單操作</div>
+          <div class="odm-actions">
+            ${o.status==='pending'    ? `<button class="btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="orderAction(${o.id},{status:'confirmed'})">✓ 確認訂單</button>`:''}
+            ${o.status==='confirmed'  ? `<button class="btn btn-primary" style="font-size:12px;padding:7px 14px;background:#22c55e" onclick="orderAction(${o.id},{status:'completed'})">🏁 完成訂單</button>`:''}
+            ${!['cancelled','completed'].includes(o.status)
+              ? `<button class="btn btn-danger" style="font-size:12px;padding:7px 14px" onclick="orderAction(${o.id},{status:'cancelled'})">✕ 取消訂單</button>`:''}
+          </div>
+          ${o.notes ? `<div style="font-size:12px;color:#64748b;margin-top:8px">備註：${esc(o.notes)}</div>`:''}
+        </div>
+      </div>`;
+  }
+
+  async function orderAction(id, fields) {
+    const res = await fetch(`/api/orders/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(fields)
+    });
+    const updated = await res.json();
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) allOrders[idx] = updated;
+    renderOrders();
+    renderOrderModal(updated);
+    toast(`✅ 訂單已更新`, 'success');
+  }
+
+  async function addTag(id, tag) {
+    tag = (tag||'').trim();
+    if (!tag) return;
+    const res = await fetch(`/api/orders/${id}/tags`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag})
+    });
+    const updated = await res.json();
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) allOrders[idx] = updated;
+    const input = document.getElementById('tag-input');
+    if (input) input.value = '';
+    renderOrders();
+    renderOrderModal(updated);
+  }
+
+  async function removeTag(id, tag) {
+    const res = await fetch(`/api/orders/${id}/tags/${encodeURIComponent(tag)}`, {method:'DELETE'});
+    const updated = await res.json();
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) allOrders[idx] = updated;
+    renderOrders();
+    renderOrderModal(updated);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  fetch('/api/admin/settings').then(r=>r.json()).then(d => {
+    document.getElementById('biz-name-display').textContent = d.business_name || '';
+  });
+  loadStats();
+</script>
+</body>
+</html>
